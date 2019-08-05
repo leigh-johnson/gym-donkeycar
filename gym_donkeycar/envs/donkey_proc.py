@@ -3,9 +3,13 @@ file: donkey_proc.py
 author: Felix Yu
 date: 2018-09-12
 '''
+import logging
 import subprocess
 import os
 
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class DonkeyUnityProcess(object):
 
@@ -21,6 +25,8 @@ class DonkeyUnityProcess(object):
             return
 
         port_args = ["--port", str(port), '-logFile', 'unitylog.txt']
+
+        logger.info(f'spawning unity subprocess {port_args}')
 
         # Launch Unity environment
         if headless:

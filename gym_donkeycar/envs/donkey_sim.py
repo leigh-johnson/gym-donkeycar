@@ -20,6 +20,7 @@ from gym_donkeycar.core.tcp_server import IMesgHandler, SimServer
 from gym_donkeycar.envs.donkey_ex import SimFailed
 
 logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class DonkeyUnitySimContoller():
@@ -35,10 +36,11 @@ class DonkeyUnitySimContoller():
             level, time_step=time_step, max_cte=max_cte,
             cam_resolution=cam_resolution)
 
+        logger.info(f'Spawning SimServer with address {self.address}')
         try:
             self.server = SimServer(self.address, self.handler)
         except OSError:
-            raise SimFailed("failed to listen on address %s" % self.address)
+            raise SimFailed(f'Failed SimServer with address {self.address}')
 
         self.thread = Thread(target=asyncore.loop)
         self.thread.daemon = True
@@ -139,7 +141,8 @@ class DonkeyUnitySimHandler(IMesgHandler):
         return self.camera_img_size
 
     def take_action(self, action):
-        self.send_control(action[0], action[1])
+        #self.send_control(action[0], action[1])
+        self.send_control(action)
 
     def observe(self):
         while self.last_obs is self.image_array:
@@ -229,7 +232,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
             logger.debug(f"SceneNames: {names}")
             self.send_load_scene(names[self.iSceneToLoad])
 
-    def send_control(self, steer, throttle):
+    def send_control(self, steer, throttle=0.5):
         if not self.loaded:
             return
         msg = {'msg_type': 'control', 'steering': steer.__str__(

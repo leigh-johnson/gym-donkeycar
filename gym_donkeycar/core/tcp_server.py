@@ -8,6 +8,12 @@ import json
 import re
 import asyncore
 import socket
+import sys
+import traceback
+import logging
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 def replace_float_notation(string):
@@ -54,7 +60,7 @@ class SimServer(asyncore.dispatcher):
     """
 
     def __init__(self, address, msg_handler):
-        asyncore.dispatcher.__init__(self)
+        super(SimServer, self).__init__()
 
         # create a TCP socket to listen for connections
         self.create_socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -72,7 +78,7 @@ class SimServer(asyncore.dispatcher):
 
         # let tcp stack know we plan to process one outstanding request to connect request each loop
         self.listen(5)
-
+        
         # keep a pointer to our IMesgHandler handler
         self.msg_handler = msg_handler
 
@@ -80,6 +86,10 @@ class SimServer(asyncore.dispatcher):
         # Called when a client connects to our socket
         client_info = self.accept()
 
+        if not client_info:
+            return
+
+        logger.info(f'client_infp {client_info}')
         print('got a new client', client_info[1])
 
         # make a new steering handler to communicate with the client
@@ -101,7 +111,7 @@ class SimHandler(asyncore.dispatcher):
 
     def __init__(self, sock, chunk_size=(16 * 1024), msg_handler=None):
         # we call our base class init
-        asyncore.dispatcher.__init__(self, sock=sock)
+        super(SimHandler, self).__init__(sock=sock)
 
         # msg_handler handles incoming messages
         self.msg_handler = msg_handler
@@ -138,8 +148,10 @@ class SimHandler(asyncore.dispatcher):
         """
 
         # pop the first element from the list. encode will make it into a byte stream
+        if len(self.data_to_write) == 0:
+            return
         data = self.data_to_write.pop(0).encode()
-
+        logging.info(data)
         # send a slice of that data, up to a max of the chunk_size
         sent = self.send(data[:self.chunk_size])
 
@@ -160,7 +172,11 @@ class SimHandler(asyncore.dispatcher):
         """
 
         # receive a chunk of data with the max size chunk_size from our client.
-        data = self.recv(self.chunk_size)
+        try:
+            data = self.recv(self.chunk_size)
+        # no data to read, do not block while waiting for data
+        except BlockingIOError:
+            return
 
         if len(data) == 0:
             # this only happens when the connection is dropped
@@ -213,3 +229,13 @@ class SimHandler(asyncore.dispatcher):
             print('connection dropped')
 
         self.close()
+
+    def handle_error(self):
+        # nil, t, v, tbinfo = 
+        exp_cls, call, tb = sys.exc_info()
+        logger.error(
+            f'EXCEPTION {exp_cls} {call}'
+        )
+        traceback.print_tb(tb)
+
+        self.handle_close()

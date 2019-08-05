@@ -3,6 +3,7 @@ file: donkey_env.py
 author: Tawn Kramer
 date: 2018-08-31
 '''
+import logging
 import os
 import random
 import time
@@ -14,6 +15,8 @@ from gym.utils import seeding
 from gym_donkeycar.envs.donkey_sim import DonkeyUnitySimContoller
 from gym_donkeycar.envs.donkey_proc import DonkeyUnityProcess
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 class DonkeyEnv(gym.Env):
     """
@@ -24,8 +27,10 @@ class DonkeyEnv(gym.Env):
         "render.modes": ["human", "rgb_array"],
     }
 
-    ACTION_NAMES = ["steer", "throttle"]
-    STEER_LIMIT_LEFT = -1.0
+    # ACTION_NAMES = ["steer", "throttle"]
+    ACTION_NAMES = ["steer"]
+
+    STEER_LIMIT_LEFT = 0
     STEER_LIMIT_RIGHT = 1.0
     THROTTLE_MIN = 0.0
     THROTTLE_MAX = 5.0
@@ -65,6 +70,7 @@ class DonkeyEnv(gym.Env):
             print("Missing DONKEY_SIM_HEADLESS environment var. Using defaults")
             headless = False
 
+        logger.info(f'starting DONKEY_SIM_PORT {port}')
         self.proc.start(exe_path, headless=headless, port=port)
 
         # start simulation com
@@ -72,8 +78,11 @@ class DonkeyEnv(gym.Env):
             level=level, time_step=time_step, port=port)
 
         # steering and throttle
-        self.action_space = spaces.Box(low=np.array([self.STEER_LIMIT_LEFT, self.THROTTLE_MIN]),
-                                       high=np.array([self.STEER_LIMIT_RIGHT, self.THROTTLE_MAX]), dtype=np.float32)
+        self.action_space = spaces.Box(low=np.array([self.STEER_LIMIT_LEFT]),
+                                       high=np.array([self.STEER_LIMIT_RIGHT]), dtype=np.float32)
+
+        # self.action_space = spaces.Box(low=np.array([self.STEER_LIMIT_LEFT, self.THROTTLE_MIN]),
+        #                                high=np.array([self.STEER_LIMIT_RIGHT, self.THROTTLE_MAX]), dtype=np.float32)
 
         # camera sensor data
         self.observation_space = spaces.Box(
