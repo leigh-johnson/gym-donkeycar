@@ -36,7 +36,7 @@ class DonkeyEnv(gym.Env):
     THROTTLE_MAX = 5.0
     VAL_PER_PIXEL = 255
 
-    def __init__(self, level, time_step=0.05, frame_skip=2):
+    def __init__(self, level, time_step=0.05, frame_skip=2, headless=False):
 
         print("starting DonkeyGym env")
 
@@ -68,7 +68,7 @@ class DonkeyEnv(gym.Env):
             headless = os.environ['DONKEY_SIM_HEADLESS'] == '1'
         except:
             print("Missing DONKEY_SIM_HEADLESS environment var. Using defaults")
-            headless = False
+            headless = headless
 
         logger.info(f'starting DONKEY_SIM_PORT {port}')
         self.proc.start(exe_path, headless=headless, port=port)
@@ -133,23 +133,23 @@ class DonkeyEnv(gym.Env):
 
 class GeneratedRoadsEnv(DonkeyEnv):
 
-    def __init__(self):
-        super(GeneratedRoadsEnv, self).__init__(level=0)
+    def __init__(self, **kwargs):
+        super(GeneratedRoadsEnv, self).__init__(level=0, **kwargs)
 
 
 class WarehouseEnv(DonkeyEnv):
 
-    def __init__(self):
-        super(WarehouseEnv, self).__init__(level=1)
+    def __init__(self, **kwargs):
+        super(WarehouseEnv, self).__init__(level=1, **kwargs)
 
 
 class AvcSparkfunEnv(DonkeyEnv):
 
-    def __init__(self):
-        super(AvcSparkfunEnv, self).__init__(level=2)
+    def __init__(self, **kwargs):
+        super(AvcSparkfunEnv, self).__init__(level=2, **kwargs)
 
 
 class GeneratedTrackEnv(DonkeyEnv):
 
-    def __init__(self):
-        super(GeneratedTrackEnv, self).__init__(level=3)
+    def __init__(self, **kwargs):
+        super(GeneratedTrackEnv, self).__init__(level=3, **kwargs)

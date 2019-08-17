@@ -14,6 +14,6 @@ class FPSTimer(object):
         self.iter += 1
         if self.iter == 100:
             e = time.time()
-            print('fps', 100.0 / (e - self.t))
+            #print('fps', 100.0 / (e - self.t))
             self.t = time.time()
             self.iter = 0

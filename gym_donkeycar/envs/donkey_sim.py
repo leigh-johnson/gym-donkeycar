@@ -85,7 +85,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.sock = None
         self.loaded = False
         self.max_cte = max_cte
-        self.timer = FPSTimer()
+        #self.timer = FPSTimer()
 
         # sensor size - height, width, depth
         self.camera_img_size = cam_resolution
@@ -134,7 +134,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.speed = 0.0
         self.over = False
         self.send_reset_car()
-        self.timer.reset()
+        #self.timer.reset()
         time.sleep(1)
 
     def get_sensor_size(self):
@@ -155,7 +155,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
         info = {'pos': (self.x, self.y, self.z), 'cte': self.cte,
                 "speed": self.speed, "hit": self.hit}
 
-        self.timer.on_frame()
+        #self.timer.on_frame()
 
         return observation, reward, done, info
 
