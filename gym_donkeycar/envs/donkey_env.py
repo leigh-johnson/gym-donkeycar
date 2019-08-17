@@ -8,7 +8,6 @@ import random
 import time
 
 import numpy as np
-import pandas as pd
 import gym
 from gym import spaces
 from gym.utils import seeding
@@ -73,30 +72,21 @@ class MultiDiscreteDonkeyEnv(gym.Env):
 
         # Quantize STEER domain
         # Divide range of STEER controls in n bins, where n is `steer_actions`
-        steer_intervals, steer_bins = pd.qcut(
-            np.arange(
-                self.STEER_LIMIT_LEFT,
-                self.STEER_LIMIT_RIGHT,
-                10**(-steer_precision)
-                ),
-            steer_actions,
-            ret_bins=True,
+        self.steer_bins = np.linspace(
+            self.STEER_LIMIT_LEFT,
+            self.STEER_LIMIT_RIGHT,
+            num=steer_actions,
             dtype=np.float32
         )
-        self.steer_bins = steer_bins
         
         # Quantize THROTTLE domain
         # Divide range of THROTTLE controls into n bins, where n is `throttle_actions`
-        throttle_intervals, throttle_bins = pd.qcut(
-            np.arange(
-                self.THROTTLE_MIN,
-                self.THROTTLE_MAX,
-                10**(-throttle_precision)
-            ),
-            throttle_actions,
-            ret_bins=True
+        self.throttle_bins = np.linspace(
+            self.THROTTLE_MIN,
+            self.THROTTLE_MAX,
+            num=throttle_actions,
+            dtype=np.float32
         )
-        self.throttle_bins = throttle_bins
 
         self.init_donkey_sim()
         # start simulation com
@@ -160,7 +150,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         self.np_random, seed = seeding.np_random(seed)
         return [seed]
 
-    def desearialize_action(self, action):
+    def deserialize_action(self, action):
         '''
             action - (steer, throttle) integers representing bin number
 
@@ -168,11 +158,12 @@ class MultiDiscreteDonkeyEnv(gym.Env):
                 (steer_value, throttle_value) - returns quantized float32 values 
         '''
         steer_action, throttle_action = action
+
         return self.steer_bins[steer_action], self.throttle_bins[throttle_action]
 
     def step(self, action):
 
-        desearialized_action = self.desearialize_action(action)
+        desearialized_action = self.deserialize_action(action)
         for i in range(self.frame_skip):
             self.viewer.take_action(desearialized_action)
             observation, reward, done, info = self.viewer.observe()

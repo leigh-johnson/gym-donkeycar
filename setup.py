@@ -20,7 +20,6 @@ requirements = [
     'gym',
     'numpy',
     'pillow',
-    'pandas'
 ]
 
 setup_requirements = ['pytest-runner', ]
