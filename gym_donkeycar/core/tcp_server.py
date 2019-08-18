@@ -79,6 +79,8 @@ class SimServer(asyncore.dispatcher):
     def handle_accept(self):
         # Called when a client connects to our socket
         client_info = self.accept()
+        if not client_info:
+            return
 
         print('got a new client', client_info[1])
 
@@ -137,6 +139,8 @@ class SimHandler(asyncore.dispatcher):
           and when self.writable return true, that yes, we have data to send.
         """
 
+        if not len(self.data_to_write):
+            return
         # pop the first element from the list. encode will make it into a byte stream
         data = self.data_to_write.pop(0).encode()
 
@@ -160,8 +164,11 @@ class SimHandler(asyncore.dispatcher):
         """
 
         # receive a chunk of data with the max size chunk_size from our client.
-        data = self.recv(self.chunk_size)
-
+        try:
+            data = self.recv(self.chunk_size)
+        # no data to read, do not block while waiting for data
+        except BlockingIOError:
+            return
         if len(data) == 0:
             # this only happens when the connection is dropped
             self.handle_close()
