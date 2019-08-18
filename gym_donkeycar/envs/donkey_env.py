@@ -157,6 +157,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
             Returns
                 (steer_value, throttle_value) - returns quantized float32 values 
         '''
+
         steer_action, throttle_action = action
 
         return self.steer_bins[steer_action], self.throttle_bins[throttle_action]
