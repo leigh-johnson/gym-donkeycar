@@ -48,7 +48,9 @@ class MultiDiscreteDonkeyEnv(gym.Env):
 
     def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=32, 
             steer_precision=3, throttle_actions=5, throttle_precision=1,
-            headless=False
+            headless=False,
+            thread_name='train',
+            thread_map=None
         ):
         '''
             Donkey Car Unity Sim accepts float32 values for STEER and THROTTLE commands
@@ -69,6 +71,8 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         self.headless = headless
         self.steer_actions = steer_actions
         self.throttle_actions = throttle_actions
+        self.thread_name = thread_name
+        self.thread_map = thread_map
 
         # Quantize STEER domain
         # Divide range of STEER controls in n bins, where n is `steer_actions`
@@ -90,8 +94,9 @@ class MultiDiscreteDonkeyEnv(gym.Env):
 
         self.init_donkey_sim()
         # start simulation com
+        time.sleep(2)
         self.viewer = DonkeyUnitySimContoller(
-            level=level, time_step=time_step, port=self.port)
+            level=level, time_step=time_step, port=self.port, thread_name=thread_name, thread_map=thread_map)
 
         # steering and throttle
         self.action_space = spaces.MultiDiscrete([
