@@ -3,7 +3,6 @@ file: donkey_sim.py
 author: Tawn Kramer
 date: 2018-08-31
 '''
-
 import time
 from io import BytesIO
 import math
@@ -19,34 +18,36 @@ from gym_donkeycar.core.fps import FPSTimer
 from gym_donkeycar.core.tcp_server import IMesgHandler, SimServer
 from gym_donkeycar.envs.donkey_ex import SimFailed
 
-logger = logging.getLogger(__name__)
-
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class DonkeyUnitySimContoller():
 
     def __init__(self, level, time_step=0.05, hostname='0.0.0.0',
-                 port=9090, max_cte=5.0, loglevel='INFO', cam_resolution=(120, 160, 3)):
+                 port=9090, max_cte=5.0, loglevel='INFO', cam_resolution=(120, 160, 3), thread_name='SimThread', dispatcher_map=None):
 
-        logger.setLevel(loglevel)
 
         self.address = (hostname, port)
-
+        self.thread_name = thread_name
         self.handler = DonkeyUnitySimHandler(
             level, time_step=time_step, max_cte=max_cte,
             cam_resolution=cam_resolution)
-
+        
+        self.dispatcher_map = dispatcher_map
         try:
             self.server = SimServer(self.address, self.handler)
         except OSError:
             raise SimFailed("failed to listen on address %s" % self.address)
 
-        self.thread = Thread(target=asyncore.loop)
-        self.thread.daemon = True
+        # self.p = Process(target=asyncore.loop)
+        # self.p.start()
+        self.thread = Thread(target=asyncore.loop, name=thread_name, daemon=True)
+        #self.thread.daemon = True
         self.thread.start()
 
     def wait_until_loaded(self):
+        
         while not self.handler.loaded:
-            logger.warning("waiting for sim to start..")
+            logging.warning("waiting for sim to start..")
             time.sleep(3.0)
 
     def reset(self):
@@ -109,19 +110,19 @@ class DonkeyUnitySimHandler(IMesgHandler):
 
     def on_recv_message(self, message):
         if 'msg_type' not in message:
-            logger.error('expected msg_type field')
+            logging.error('expected msg_type field')
             return
 
         msg_type = message['msg_type']
         if msg_type in self.fns:
             self.fns[msg_type](message)
         else:
-            logger.warning(f'unknown message type {msg_type}')
+            logging.warning(f'unknown message type {msg_type}')
 
     ## ------- Env interface ---------- ##
 
     def reset(self):
-        logger.debug("reseting")
+        logging.debug("reseting")
         self.image_array = np.zeros(self.camera_img_size)
         self.last_obs = self.image_array
         self.hit = "none"
@@ -209,24 +210,24 @@ class DonkeyUnitySimHandler(IMesgHandler):
         if math.fabs(self.cte) > 2 * self.max_cte:
             pass
         elif math.fabs(self.cte) > self.max_cte:
-            logger.debug(f"game over: cte {self.cte}")
+            logging.debug(f"game over: cte {self.cte}")
             self.over = True
         elif self.hit != "none":
-            logger.debug(f"game over: hit {self.hit}")
+            logging.debug(f"game over: hit {self.hit}")
             self.over = True
 
     def on_scene_selection_ready(self, data):
-        logger.debug("SceneSelectionReady ")
+        logging.debug("SceneSelectionReady ")
         self.send_get_scene_names()
 
     def on_car_loaded(self, data):
-        logger.debug("car loaded")
+        logging.debug("car loaded")
         self.loaded = True
 
     def on_recv_scene_names(self, data):
         if data:
             names = data['scene_names']
-            logger.debug(f"SceneNames: {names}")
+            logging.debug(f"SceneNames: {names}")
             self.send_load_scene(names[self.iSceneToLoad])
 
     def send_control(self, steer, throttle):
@@ -238,6 +239,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
 
     def send_reset_car(self):
         msg = {'msg_type': 'reset_car'}
+        self.send_control(0, 0)
         self.queue_message(msg)
 
     def send_get_scene_names(self):
@@ -250,8 +252,8 @@ class DonkeyUnitySimHandler(IMesgHandler):
 
     def queue_message(self, msg):
         if self.sock is None:
-            logger.debug(f'skiping: \n {msg}')
+            logging.debug(f'skiping: \n {msg}')
             return
 
-        logger.debug(f'sending \n {msg}')
+        logging.debug(f'sending \n {msg}')
         self.sock.queue_message(msg)

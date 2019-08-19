@@ -5,10 +5,13 @@ file: tcp_server.py
 notes: a tcp socket server to talk to the unity donkey simulator
 '''
 import json
+import logging
 import re
 import asyncore
+import os
 import socket
 
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 def replace_float_notation(string):
     """
@@ -53,7 +56,7 @@ class SimServer(asyncore.dispatcher):
       Each client connection is handled by a new instance of the SteeringHandler class.
     """
 
-    def __init__(self, address, msg_handler):
+    def __init__(self, address, msg_handler, dispatcher_map=None):
         asyncore.dispatcher.__init__(self)
 
         # create a TCP socket to listen for connections
@@ -61,14 +64,14 @@ class SimServer(asyncore.dispatcher):
 
         # in case we have shutdown recently, allow the os to reuse this address.
         # helps when restarting
-        self.set_reuse_addr()
+        #self.set_reuse_addr()
 
         # let TCP stack know that we'd like to sit on this address and listen for connections
         self.bind(address)
 
         # confirm for users what address we are listening on
         self.address = self.socket.getsockname()
-        print('binding to', self.address)
+        logging.info(f'binding to {self.address}')
 
         # let tcp stack know we plan to process one outstanding request to connect request each loop
         self.listen(5)
@@ -79,14 +82,16 @@ class SimServer(asyncore.dispatcher):
     def handle_accept(self):
         # Called when a client connects to our socket
         client_info = self.accept()
+        if not client_info:
+            return
 
-        print('got a new client', client_info[1])
+        logging.info(f'got a new client {client_info[1]}')
 
         # make a new steering handler to communicate with the client
         SimHandler(sock=client_info[0], msg_handler=self.msg_handler)
 
     def handle_close(self):
-        print("server shutdown")
+        logging.info("server shutdown")
         # Called then server is shutdown
         self.close()
 
@@ -99,7 +104,7 @@ class SimHandler(asyncore.dispatcher):
       Handles messages from a single TCP client.
     """
 
-    def __init__(self, sock, chunk_size=(16 * 1024), msg_handler=None):
+    def __init__(self, sock, chunk_size=(16 * 1024), msg_handler=None, dispatcher_map=None):
         # we call our base class init
         asyncore.dispatcher.__init__(self, sock=sock)
 
@@ -122,12 +127,13 @@ class SimHandler(asyncore.dispatcher):
         """
           We want to write if we have received data.
         """
-        response = bool(self.data_to_write)
+        response = hasattr(self, 'data_to_write') and bool(self.data_to_write)
 
         return response
 
     def queue_message(self, msg):
         json_msg = json.dumps(msg)
+        logging.debug(f'adding msg to SimHandler.data_to_write \n {json_msg}')
         self.data_to_write.append(json_msg)
 
     def handle_write(self):
@@ -138,8 +144,10 @@ class SimHandler(asyncore.dispatcher):
         """
 
         # pop the first element from the list. encode will make it into a byte stream
-        data = self.data_to_write.pop(0).encode()
-
+        try:
+            data = self.data_to_write.pop(0).encode()
+        except IndexError:
+            return
         # send a slice of that data, up to a max of the chunk_size
         sent = self.send(data[:self.chunk_size])
 
@@ -160,8 +168,13 @@ class SimHandler(asyncore.dispatcher):
         """
 
         # receive a chunk of data with the max size chunk_size from our client.
-        data = self.recv(self.chunk_size)
-
+        try:
+            data = self.recv(self.chunk_size)
+        except BlockingIOError as e:
+            return
+        # no data to read, do not block while waiting for data
+        # except BlockingIOError:
+        #     return
         if len(data) == 0:
             # this only happens when the connection is dropped
             self.handle_close()
@@ -210,6 +223,6 @@ class SimHandler(asyncore.dispatcher):
         if self.msg_handler:
             self.msg_handler.on_disconnect()
             self.msg_handler = None
-            print('connection dropped')
+            logging.info('connection dropped')
 
         self.close()
