@@ -3,6 +3,7 @@ file: donkey_env.py
 author: Tawn Kramer
 date: 2018-08-31
 '''
+import logging
 import os
 import random
 import time
@@ -13,6 +14,8 @@ from gym import spaces
 from gym.utils import seeding
 from gym_donkeycar.envs.donkey_sim import DonkeyUnitySimContoller
 from gym_donkeycar.envs.donkey_proc import DonkeyUnityProcess
+
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class MultiDiscreteDonkeyEnv(gym.Env):
@@ -49,8 +52,8 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=32, 
             steer_precision=3, throttle_actions=5, throttle_precision=1,
             headless=False,
-            thread_name='train',
-            thread_map=None
+            dispatcher_map=None,
+            thread_name='SimThread'
         ):
         '''
             Donkey Car Unity Sim accepts float32 values for STEER and THROTTLE commands
@@ -67,13 +70,11 @@ class MultiDiscreteDonkeyEnv(gym.Env):
             The precision represents the number of significant digits used as a step in the range. 
         '''
 
-        print("starting DonkeyGym env")
+        logging.info("Initializing DonkeyGym env")
         self.headless = headless
         self.steer_actions = steer_actions
         self.throttle_actions = throttle_actions
         self.thread_name = thread_name
-        self.thread_map = thread_map
-
         # Quantize STEER domain
         # Divide range of STEER controls in n bins, where n is `steer_actions`
         self.steer_bins = np.linspace(
@@ -96,7 +97,8 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         # start simulation com
         time.sleep(2)
         self.viewer = DonkeyUnitySimContoller(
-            level=level, time_step=time_step, port=self.port, thread_name=thread_name, thread_map=thread_map)
+            level=level, time_step=time_step, port=self.port, dispatcher_map=dispatcher_map, thread_name=thread_name
+        )
 
         # steering and throttle
         self.action_space = spaces.MultiDiscrete([
@@ -123,7 +125,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         try:
             exe_path = os.environ['DONKEY_SIM_PATH']
         except:
-            print("Missing DONKEY_SIM_PATH environment var. you must start sim manually")
+            logging.error("Missing DONKEY_SIM_PATH environment var. you must start sim manually")
             exe_path = "self_start"
 
         try:
@@ -139,7 +141,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
             port = int(os.environ['DONKEY_SIM_PORT']) + port_offset
         except:
             port = 9091 + port_offset
-            print("Missing DONKEY_SIM_PORT environment var. Using default:", port)
+            logging.warning(f"Missing DONKEY_SIM_PORT environment var. Using default: {port}")
 
         headless = bool(os.environ.get('DONKEY_SIM_HEADLESS', self.headless))
         self.port = port
@@ -173,6 +175,9 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         for i in range(self.frame_skip):
             self.viewer.take_action(desearialized_action)
             observation, reward, done, info = self.viewer.observe()
+        
+        if self.thread_name == 'TrainSimThread':
+            logging.info(f'step obervation {observation}, reward {reward}, done {done}, info {info}')
         return observation, reward, done, info
 
     def reset(self):

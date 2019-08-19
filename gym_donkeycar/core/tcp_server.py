@@ -56,7 +56,7 @@ class SimServer(asyncore.dispatcher):
       Each client connection is handled by a new instance of the SteeringHandler class.
     """
 
-    def __init__(self, address, msg_handler, thread_map=None):
+    def __init__(self, address, msg_handler, dispatcher_map=None):
         asyncore.dispatcher.__init__(self)
 
         # create a TCP socket to listen for connections
@@ -104,9 +104,10 @@ class SimHandler(asyncore.dispatcher):
       Handles messages from a single TCP client.
     """
 
-    def __init__(self, sock, chunk_size=(16 * 1024), msg_handler=None):
+    def __init__(self, sock, chunk_size=(16 * 1024), msg_handler=None, dispatcher_map=None):
         # we call our base class init
         asyncore.dispatcher.__init__(self, sock=sock)
+
         # msg_handler handles incoming messages
         self.msg_handler = msg_handler
 

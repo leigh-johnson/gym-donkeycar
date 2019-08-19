@@ -23,7 +23,7 @@ logging.getLogger(__name__).addHandler(logging.NullHandler())
 class DonkeyUnitySimContoller():
 
     def __init__(self, level, time_step=0.05, hostname='0.0.0.0',
-                 port=9090, max_cte=5.0, loglevel='INFO', cam_resolution=(120, 160, 3), thread_name='train', thread_map=None):
+                 port=9090, max_cte=5.0, loglevel='INFO', cam_resolution=(120, 160, 3), thread_name='SimThread', dispatcher_map=None):
 
 
         self.address = (hostname, port)
@@ -32,7 +32,7 @@ class DonkeyUnitySimContoller():
             level, time_step=time_step, max_cte=max_cte,
             cam_resolution=cam_resolution)
         
-        self.thread_map = thread_map
+        self.dispatcher_map = dispatcher_map
         try:
             self.server = SimServer(self.address, self.handler)
         except OSError:
@@ -41,7 +41,7 @@ class DonkeyUnitySimContoller():
         # self.p = Process(target=asyncore.loop)
         # self.p.start()
         self.thread = Thread(target=asyncore.loop, name=thread_name, daemon=True)
-        self.thread.daemon = True
+        #self.thread.daemon = True
         self.thread.start()
 
     def wait_until_loaded(self):
