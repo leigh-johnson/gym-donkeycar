@@ -44,3 +44,25 @@ register(
     id='donkey-avc-sparkfun-multidiscrete-v0',
     entry_point='gym_donkeycar.envs.donkey_env:MultiDiscreteAvcSparkfunEnv',
 )
+
+# Asyncio Envs
+
+register(
+    id='donkey-generated-roads-async-multidiscrete-v0',
+    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteGeneratedRoadsEnv',
+)
+
+register(
+    id='donkey-generated-track-async-multidiscrete-v0',
+    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteGeneratedTrackEnv',
+)
+
+register(
+    id='donkey-warehouse-async-multidiscrete-v0',
+    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteWarehouseEnv',
+)
+
+register(
+    id='donkey-avc-sparkfun-async-multidiscrete-v0',
+    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteAvcSparkfunEnv',
+)

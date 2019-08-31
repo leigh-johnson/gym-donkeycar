@@ -20,12 +20,11 @@ import numpy as np
 import gym
 from gym import spaces
 from gym.utils import seeding
-from gym_donkeycar.envs.donkey_sim import DonkeyUnitySimContoller
 from gym_donkeycar.envs.donkey_proc import DonkeyUnityProcess
 
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
-class AsynMultiDiscreteDonkeyEnv(gym.Env):
+class AsyncMultiDiscreteDonkeyEnv(gym.Env):
     '''
         Multi-discrete action space consists of a series of discrete action spaces, each with a different number of actions
 
@@ -136,6 +135,7 @@ class AsynMultiDiscreteDonkeyEnv(gym.Env):
         except:
             logging.error("Missing DONKEY_SIM_PATH environment var. you must start sim manually")
             exe_path = "self_start"
+        
             
         headless = bool(os.environ.get('DONKEY_SIM_HEADLESS', self.headless))
         self.proc.start(exe_path, headless=headless, port=self.port)
@@ -409,3 +409,25 @@ class UnitySimBroker(object):
         writer.write(msg.encode())
 
 
+class AsyncMultiDiscreteGeneratedRoadsEnv(AsyncMultiDiscreteDonkeyEnv):
+
+    def __init__(self, **kwargs):
+        super(AsyncMultiDiscreteGeneratedRoadsEnv, self).__init__(level=0, **kwargs)
+
+
+class AsyncMultiDiscreteWarehouseEnv(AsyncMultiDiscreteDonkeyEnv):
+
+    def __init__(self, **kwargs):
+        super(AsyncMultiDiscreteWarehouseEnv, self).__init__(level=1, **kwargs)
+
+
+class AsyncMultiDiscreteAvcSparkfunEnv(AsyncMultiDiscreteDonkeyEnv):
+
+    def __init__(self, **kwargs):
+        super(AsyncMultiDiscreteAvcSparkfunEnv, self).__init__(level=2, **kwargs)
+
+
+class AsyncMultiDiscreteGeneratedTrackEnv(AsyncMultiDiscreteDonkeyEnv):
+
+    def __init__(self, **kwargs):
+        super(AsyncMultiDiscreteGeneratedTrackEnv, self).__init__(level=3, **kwargs)
