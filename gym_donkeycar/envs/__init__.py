@@ -49,20 +49,20 @@ register(
 
 register(
     id='donkey-generated-roads-async-multidiscrete-v0',
-    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteGeneratedRoadsEnv',
+    entry_point='gym_donkeycar.envs.async.donkey_env_async:AsyncMultiDiscreteGeneratedRoadsEnv',
 )
 
 register(
     id='donkey-generated-track-async-multidiscrete-v0',
-    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteGeneratedTrackEnv',
+    entry_point='gym_donkeycar.envs.async.donkey_env_async:AsyncMultiDiscreteGeneratedTrackEnv',
 )
 
 register(
     id='donkey-warehouse-async-multidiscrete-v0',
-    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteWarehouseEnv',
+    entry_point='gym_donkeycar.envs.async.donkey_env_async:AsyncMultiDiscreteWarehouseEnv',
 )
 
 register(
     id='donkey-avc-sparkfun-async-multidiscrete-v0',
-    entry_point='gym_donkeycar.envs.donkey_env:AsyncMultiDiscreteAvcSparkfunEnv',
+    entry_point='gym_donkeycar.envs.async.donkey_env_async:AsyncMultiDiscreteAvcSparkfunEnv',
 )

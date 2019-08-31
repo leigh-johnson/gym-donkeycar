@@ -55,7 +55,7 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
     THROTTLE_MAX = 5.0
     VAL_PER_PIXEL = 255
 
-    async def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=32, 
+    def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=32, 
             steer_precision=3, throttle_actions=5, throttle_precision=1,
             headless=False,
             port=9090
@@ -76,7 +76,7 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         '''
 
         logging.info("Initializing DonkeyGym env")
-        self.port = ports
+        self.port = port
         self.headless = headless
         self.steer_actions = steer_actions
         self.throttle_actions = throttle_actions
@@ -101,10 +101,10 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         
         # start Unity sim child process
         self.init_donkey_sim()
-        await asyncio.sleep(2)
+        time.sleep(2)
 
         # init communications
-        self.viewer = UnitySimContoller(
+        self.viewer = UnitySimController(
             level=level, time_step=time_step, port=self.port
         )
 
@@ -124,8 +124,20 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         self.frame_skip = frame_skip
 
         # wait until loaded
-        self.view
+        self.viewer.wait_until_loaded()
 
+
+    def deserialize_action(self, action):
+        '''
+            action - (steer, throttle) integers representing bin number
+
+            Returns
+                (steer_value, throttle_value) - returns quantized float32 values 
+        '''
+
+        steer_action, throttle_action = action
+
+        return self.steer_bins[steer_action], self.throttle_bins[throttle_action]
     def init_donkey_sim(self):
         # start Unity simulation subprocess
         self.proc = DonkeyUnityProcess()
@@ -199,9 +211,6 @@ class UnitySimBroker(object):
         cam_resolution=(120, 160, 3),
         hostname='0.0.0.0',
         port=9090,
-        time_step=0.05, 
-        max_cte=5.0,
-        cam_resolution=None,
         chunk_size=(16 * 1024)
         ):
         '''[summary]
