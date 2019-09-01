@@ -18,8 +18,6 @@ from gym_donkeycar.core.fps import FPSTimer
 from gym_donkeycar.core.tcp_server import IMesgHandler, SimServer
 from gym_donkeycar.envs.donkey_ex import SimFailed
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
 class DonkeyUnitySimContoller():
 
     def __init__(self, level, time_step=0.05, hostname='0.0.0.0',
@@ -41,7 +39,6 @@ class DonkeyUnitySimContoller():
         # self.p = Process(target=asyncore.loop)
         # self.p.start()
         self.thread = Thread(target=asyncore.loop, name=thread_name, daemon=True)
-        #self.thread.daemon = True
         self.thread.start()
 
     def wait_until_loaded(self):

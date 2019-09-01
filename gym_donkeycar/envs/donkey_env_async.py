@@ -10,19 +10,27 @@ date: 2018-08-31
 '''
 
 import asyncio
+import base64
+
 import json
+from io import BytesIO
+
 import logging
+import math
 import os
 import random
+import threading
 import time
 
 import numpy as np
 import gym
 from gym import spaces
 from gym.utils import seeding
+from PIL import Image
+
 from gym_donkeycar.envs.donkey_proc import DonkeyUnityProcess
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
+#logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 class AsyncMultiDiscreteDonkeyEnv(gym.Env):
     '''
@@ -107,6 +115,7 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         self.viewer = UnitySimController(
             level=level, time_step=time_step, port=self.port
         )
+        self.viewer.wait_until_loaded()
 
         # steering and throttle
         self.action_space = spaces.MultiDiscrete([
@@ -123,21 +132,6 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         # Frame Skipping
         self.frame_skip = frame_skip
 
-        # wait until loaded
-        self.viewer.wait_until_loaded()
-
-
-    def deserialize_action(self, action):
-        '''
-            action - (steer, throttle) integers representing bin number
-
-            Returns
-                (steer_value, throttle_value) - returns quantized float32 values 
-        '''
-
-        steer_action, throttle_action = action
-
-        return self.steer_bins[steer_action], self.throttle_bins[throttle_action]
     def init_donkey_sim(self):
         # start Unity simulation subprocess
         self.proc = DonkeyUnityProcess()
@@ -152,12 +146,59 @@ class AsyncMultiDiscreteDonkeyEnv(gym.Env):
         headless = bool(os.environ.get('DONKEY_SIM_HEADLESS', self.headless))
         self.proc.start(exe_path, headless=headless, port=self.port)
 
+
+    def __del__(self):
+        self.close()
+
+    def close(self):
+        self.proc.quit()
+
+    def seed(self, seed=None):
+        self.np_random, seed = seeding.np_random(seed)
+        return [seed]
+
+    def deserialize_action(self, action):
+        '''
+            action - (steer, throttle) integers representing bin number
+
+            Returns
+                (steer_value, throttle_value) - returns quantized float32 values 
+        '''
+
+        steer_action, throttle_action = action
+
+        return self.steer_bins[steer_action], self.throttle_bins[throttle_action]
+
+    def step(self, action):
+
+        desearialized_action = self.deserialize_action(action)
+        for i in range(self.frame_skip):
+            self.viewer.take_action(desearialized_action)
+            observation, reward, done, info = self.viewer.observe()
+        
+        return observation, reward, done, info
+
+    def reset(self):
+        self.viewer.reset()
+        observation, reward, done, info = self.viewer.observe()
+        return observation
+
+    def render(self, mode="human", close=False):
+        if close:
+            self.viewer.quit()
+
+        return self.viewer.render(mode)
+
+    def is_game_over(self):
+        return self.viewer.is_game_over()
+
+
 class UnitySimController(object):
 
     '''
         Handles high-level TCP calls between gym.Env and Unity simulator process
     '''
-    async def __init__(self, level, time_step=0.05, hostname='0.0.0.0',
+    def __init__(self, level, time_step=0.05, hostname='0.0.0.0',
                  port=9090, max_cte=5.0, loglevel='INFO', cam_resolution=(120, 160, 3)):
 
         self.broker = UnitySimBroker(
@@ -169,12 +210,8 @@ class UnitySimController(object):
             cam_resolution=cam_resolution
         )
 
-    async def wait_until_loaded(self):
-        
-        while not self.broker.loaded:
-            logging.warning("waiting for sim to start..")
-            await time.sleep(3.0)
-
+    def wait_until_loaded(self):
+        return self.broker.wait_until_loaded()
     def reset(self):
         self.broker.reset()
 
@@ -182,7 +219,7 @@ class UnitySimController(object):
         return self.broker.get_sensor_size()
 
     def take_action(self, action):
-        self.broker.take_action(action)
+        return self.broker.take_action(action)
 
     def observe(self):
         return self.broker.observe()
@@ -233,15 +270,6 @@ class UnitySimBroker(object):
         self.port = port
         self.chunk_size = chunk_size
 
-
-        asyncio.start_server(
-            self.on_client_connect, 
-            host=self.hostname, 
-            port=self.port,
-            limit=chunk_size
-        )
-
-
         self.iSceneToLoad = level
         self.time_step = time_step
         self.loaded = False
@@ -265,24 +293,61 @@ class UnitySimBroker(object):
                     "scene_selection_ready": self.on_scene_selection_ready,
                     "scene_names": self.on_recv_scene_names,
                     "car_loaded": self.on_car_loaded}
+    
+        # loop = asyncio.get_event_loop()
+        # loop.run_until_complete(self.broker.start_server())
+        self.server_thread = threading.Thread(target=asyncio.run, 
+        kwargs={'debug': True},
+        args=(self.serve_forever(),))
+        self.server_thread.daemon = True
+        self.server_thread.start()
+    
 
-    def on_client_connect(self, reader, writer):
-        logger.info(f'client connected on port: {self.port}')
+    def wait_until_loaded(self):
+
+        while not self.loaded:
+            logging.info('Waiting for car to laod')
+            time.sleep(3)
+
+    async def serve_forever(self):
+        self.server = await asyncio.start_server(
+            self.on_client_connect, 
+            host=self.hostname, 
+            port=self.port,
+            limit=self.chunk_size
+        )
+
+        addr = self.server.sockets[0].getsockname()
+        logging.info(f'Serving on {addr}')
+
+        async with self.server:
+            await self.server.serve_forever()
+
+    async def on_client_connect(self, reader, writer):
+        logging.info(f'client connected on port: {self.port}')
 
         self.reader = reader
         self.writer = writer
 
-    async def handle_read(self):
-        data = await reader.read(self.chunk_size)
-        chunk = data.decode()
-        msg = json.loads(chunk)
+        while True:
+            if not self.reader.at_eof():
+                await self.handle_read()
 
+    async def handle_read(self):
+        data = await self.reader.read(self.chunk_size)
+
+        if not data:
+            return
+        chunk = data.decode()
+
+        message = json.loads(chunk)
+        logging.debug(f'received msg {message}')
         if 'msg_type' not in message:
             logging.error('expected msg_type field')
             return
         msg_type = message['msg_type']
         if msg_type in self.fns:
-            self.fns[msg_type](message)
+            await self.fns[msg_type](message)
         else:
             logging.warning(f'unknown message type {msg_type}')
 
@@ -299,9 +364,7 @@ class UnitySimBroker(object):
         self.z = 0.0
         self.speed = 0.0
         self.over = False
-        self.send_reset_car()
-        # self.timer.reset()
-        await asyncio.sleep(1)
+        await self.send_reset_car()
 
     def get_sensor_size(self):
         return self.camera_img_size
@@ -320,7 +383,7 @@ class UnitySimBroker(object):
         info = {'pos': (self.x, self.y, self.z), 'cte': self.cte,
                 "speed": self.speed, "hit": self.hit}
 
-        self.timer.on_frame()
+        #self.timer.on_frame()
 
         return observation, reward, done, info
 
@@ -383,12 +446,8 @@ class UnitySimBroker(object):
             logging.debug(f"game over: hit {self.hit}")
             self.over = True
 
-    def on_scene_selection_ready(self, data):
-        logging.debug("SceneSelectionReady ")
-        self.send_get_scene_names()
-
     def on_car_loaded(self, data):
-        logging.debug("car loaded")
+        logging.info("car loaded")
         self.loaded = True
 
     def on_recv_scene_names(self, data):
@@ -397,25 +456,31 @@ class UnitySimBroker(object):
             logging.debug(f"SceneNames: {names}")
             self.send_load_scene(names[self.iSceneToLoad])
 
-    def send_control(self, steer, throttle):
+    async def send_control(self, steer, throttle):
+
         if not self.loaded:
             return
         msg = {'msg_type': 'control', 'steering': steer.__str__(
         ), 'throttle': throttle.__str__(), 'brake': '0.0'}
-        writer.write(msg.encode())
+        logging.info(msg)
+        self.writer.write(json.dumps(msg).encode())
+        await self.writer.drain()
 
-    def send_reset_car(self):
+    async def send_reset_car(self):
         msg = {'msg_type': 'reset_car'}
         self.send_control(0, 0)
-        writer.write(msg.encode())
+        self.writer.write(json.dumps(msg).encode())
+        await self.writer.drain()
 
-    def send_get_scene_names(self):
+    async def on_scene_selection_ready(self, data):
         msg = {'msg_type': 'get_scene_names'}
-        writer.write(msg.encode())
+        self.writer.write(json.dumps(msg).encode())
+        await self.writer.drain()
 
-    def send_load_scene(self, scene_name):
+    async def send_load_scene(self, scene_name):
         msg = {'msg_type': 'load_scene', 'scene_name': scene_name}
-        writer.write(msg.encode())
+        self.writer.write(json.dumps(msg).encode())
+        await self.writer.drain()
 
 
 class AsyncMultiDiscreteGeneratedRoadsEnv(AsyncMultiDiscreteDonkeyEnv):

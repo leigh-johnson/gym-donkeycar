@@ -11,8 +11,6 @@ import asyncore
 import os
 import socket
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
 def replace_float_notation(string):
     """
     Replace unity float notation for languages like

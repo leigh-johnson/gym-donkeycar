@@ -15,8 +15,6 @@ from gym.utils import seeding
 from gym_donkeycar.envs.donkey_sim import DonkeyUnitySimContoller
 from gym_donkeycar.envs.donkey_proc import DonkeyUnityProcess
 
-logging.getLogger(__name__).addHandler(logging.NullHandler())
-
 
 class MultiDiscreteDonkeyEnv(gym.Env):
     '''
@@ -49,11 +47,12 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     THROTTLE_MAX = 5.0
     VAL_PER_PIXEL = 255
 
-    def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=32, 
+    def __init__(self, level, time_step=0.05, frame_skip=1, steer_actions=32, 
             steer_precision=3, throttle_actions=5, throttle_precision=1,
             headless=False,
             dispatcher_map=None,
-            thread_name='SimThread'
+            thread_name='SimThread',
+            port=9090
         ):
         '''
             Donkey Car Unity Sim accepts float32 values for STEER and THROTTLE commands
@@ -71,6 +70,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         '''
 
         logging.info("Initializing DonkeyGym env")
+        self.port = port
         self.headless = headless
         self.steer_actions = steer_actions
         self.throttle_actions = throttle_actions
@@ -176,14 +176,13 @@ class MultiDiscreteDonkeyEnv(gym.Env):
             self.viewer.take_action(desearialized_action)
             observation, reward, done, info = self.viewer.observe()
         
-        if self.thread_name == 'TrainSimThread':
-            logging.info(f'step obervation {observation}, reward {reward}, done {done}, info {info}')
+        #if self.thread_name == 'TrainSimThread':
+            #logging.info(f'step obervation {observation}, reward {reward}, done {done}, info {info}')
         return observation, reward, done, info
 
     def reset(self):
         self.viewer.reset()
         observation, reward, done, info = self.viewer.observe()
-        time.sleep(1)
         return observation
 
     def render(self, mode="human", close=False):
@@ -288,7 +287,6 @@ class DonkeyEnv(gym.Env):
     def reset(self):
         self.viewer.reset()
         observation, reward, done, info = self.viewer.observe()
-        time.sleep(1)
         return observation
 
     def render(self, mode="human", close=False):
