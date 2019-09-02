@@ -43,14 +43,13 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     ACTION_NAMES = ["steer", "throttle"]
     STEER_LIMIT_LEFT = -1.0
     STEER_LIMIT_RIGHT = 1.0
-    THROTTLE_MIN = 0.0
+    THROTTLE_MIN = 0.5
     THROTTLE_MAX = 5.0
     VAL_PER_PIXEL = 255
 
     def __init__(self, level, time_step=0.05, frame_skip=1, steer_actions=32, 
             steer_precision=3, throttle_actions=5, throttle_precision=1,
             headless=False,
-            dispatcher_map=None,
             thread_name='SimThread',
             port=9090
         ):
@@ -97,7 +96,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
         # start simulation com
         time.sleep(2)
         self.viewer = DonkeyUnitySimContoller(
-            level=level, time_step=time_step, port=self.port, dispatcher_map=dispatcher_map, thread_name=thread_name
+            level=level, time_step=time_step, port=self.port, thread_name=thread_name
         )
 
         # steering and throttle

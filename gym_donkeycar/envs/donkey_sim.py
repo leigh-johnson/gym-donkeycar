@@ -131,7 +131,6 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.over = False
         self.send_reset_car()
         self.timer.reset()
-        time.sleep(1)
 
     def get_sensor_size(self):
         return self.camera_img_size
@@ -151,7 +150,6 @@ class DonkeyUnitySimHandler(IMesgHandler):
                 "speed": self.speed, "hit": self.hit}
 
         self.timer.on_frame()
-
         return observation, reward, done, info
 
     def is_game_over(self):
@@ -204,9 +202,9 @@ class DonkeyUnitySimHandler(IMesgHandler):
     def determine_episode_over(self):
         # we have a few initial frames on start that are sometimes very large CTE when it's behind
         # the path just slightly. We ignore those.
-        if math.fabs(self.cte) > 2 * self.max_cte:
-            pass
-        elif math.fabs(self.cte) > self.max_cte:
+        # if math.fabs(self.cte) > 2 * self.max_cte:
+        #     pass
+        if math.fabs(self.cte) > self.max_cte:
             logging.debug(f"game over: cte {self.cte}")
             self.over = True
         elif self.hit != "none":
