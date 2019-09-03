@@ -199,13 +199,19 @@ class SimHandler(asyncore.dispatcher):
         try:
             # Replace comma with dots for floats
             # useful when using unity in a language different from English
-            chunk = replace_float_notation(chunk)
+            #chunk = replace_float_notation(chunk)
             # convert data into a string with decode, and then load it as a json object
             jsonObj = json.loads(chunk)
         except Exception as e:
             # something bad happened, usually malformed json packet. jump back to idle and hope things continue
             print(e, 'failed to read json ', chunk)
-            return
+            # attempt to parse 1 json packet
+            bidx = chunk.rfind('{')
+            eidx = chunk.rfind('}')
+            if eidx > bidx:
+                return self.handle_json_message(chunk[bidx, eidx + 1])
+            else:
+                return
         '''
         try:
             if self.msg_handler:

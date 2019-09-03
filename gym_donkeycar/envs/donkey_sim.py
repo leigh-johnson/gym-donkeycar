@@ -139,8 +139,8 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.send_control(action[0], action[1])
 
     def observe(self):
-        while self.last_obs is self.image_array:
-            time.sleep(1.0 / 120.0)
+        # while self.last_obs is self.image_array:
+        #     time.sleep(1.0 / 120.0)
 
         self.last_obs = self.image_array
         observation = self.image_array
