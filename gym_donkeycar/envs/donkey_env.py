@@ -47,8 +47,8 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     THROTTLE_MAX = 5.0
     VAL_PER_PIXEL = 255
 
-    def __init__(self, level, time_step=0.05, frame_skip=1, steer_actions=32, 
-            steer_precision=3, throttle_actions=5, throttle_precision=1,
+    def __init__(self, level, time_step=0.05, frame_skip=2, steer_actions=16, 
+            steer_precision=3, throttle_actions=3, throttle_precision=1,
             headless=False,
             thread_name='SimThread',
             port=9090
@@ -171,6 +171,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     def step(self, action):
 
         desearialized_action = self.deserialize_action(action)
+        logging.info(desearialized_action)
         for i in range(self.frame_skip):
             self.viewer.take_action(desearialized_action)
             observation, reward, done, info = self.viewer.observe()
