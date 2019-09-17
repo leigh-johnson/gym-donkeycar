@@ -74,7 +74,7 @@ class DonkeyUnitySimContoller():
 
 class DonkeyUnitySimHandler(IMesgHandler):
 
-    def __init__(self, level, time_step=0.05, max_cte=5.0, cam_resolution=None):
+    def __init__(self, level, time_step=0.05, max_cte=4.0, cam_resolution=None):
         self.iSceneToLoad = level
         self.time_step = time_step
         self.wait_time_for_obs = 0.1
@@ -83,12 +83,16 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.max_cte = max_cte
         self.timer = FPSTimer()
 
+        self.stuck_counter = 0
         # sensor size - height, width, depth
         self.camera_img_size = cam_resolution
         self.image_array = np.zeros(self.camera_img_size)
         self.last_obs = None
         self.hit = "none"
         self.cte = 0.0
+        # self.last_x = 0.0
+        # self.last_y = 0.0
+        # self.last_z = 0.0
         self.x = 0.0
         self.y = 0.0
         self.z = 0.0
@@ -139,8 +143,14 @@ class DonkeyUnitySimHandler(IMesgHandler):
         self.send_control(action[0], action[1])
 
     def observe(self):
-        # while self.last_obs is self.image_array:
-        #     time.sleep(1.0 / 120.0)
+        while self.last_obs is self.image_array:
+            time.sleep(1.0 / 120.0)
+            self.stuck_counter += 1
+            if self.stuck_counter > 240:
+                logging.warning('car stuck! resetting')
+                self.stuck_counter = 0
+                self.reset()
+        self.stuck_counter = 0
 
         self.last_obs = self.image_array
         observation = self.image_array
@@ -158,17 +168,23 @@ class DonkeyUnitySimHandler(IMesgHandler):
     ## ------ RL interface ----------- ##
 
     def calc_reward(self, done):
+
+
+        # if self.hit != "none":
+        #     #logging.info('hit something')
+        #     #return -2.0
+        #     return -1.0
+
+        # if self.cte > self.max_cte:
+        #     #logging.info(self.cte)
+        #     return -1.0
+
         if done:
-            return -1.0
-
-        if self.cte > self.max_cte:
-            return -1.0
-
-        if self.hit != "none":
-            return -2.0
-
+            return 0
         # going fast close to the center of lane yeilds best reward
-        return 1.0 - (self.cte / self.max_cte) * self.speed
+        # logging.info(f'reward {1.0 - abs(self.cte / self.max_cte) * self.speed} | {self.speed} | {self.cte} / {self.max_cte} | {abs(self.cte / self.max_cte)}')
+        # return 1.0 - (self.cte / self.max_cte) * self.speed
+        return 1.0
 
     ## ------ Socket interface ----------- ##
 
@@ -179,7 +195,12 @@ class DonkeyUnitySimHandler(IMesgHandler):
 
         # always update the image_array as the observation loop will hang if not changing.
         self.image_array = np.asarray(image)
-
+        self.last_x = 0.0
+        self.last_y = 0.0
+        self.last_z = 0.0
+        # self.last_x = self.x
+        # self.last_y = self.y
+        # self.last_z = self.z
         self.x = data["pos_x"]
         self.y = data["pos_y"]
         self.z = data["pos_z"]
@@ -208,7 +229,7 @@ class DonkeyUnitySimHandler(IMesgHandler):
             logging.debug(f"game over: cte {self.cte}")
             self.over = True
         elif self.hit != "none":
-            logging.debug(f"game over: hit {self.hit}")
+            logging.info(f"game over: hit {self.hit}")
             self.over = True
 
     def on_scene_selection_ready(self, data):

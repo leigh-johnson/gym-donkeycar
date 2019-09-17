@@ -171,7 +171,7 @@ class MultiDiscreteDonkeyEnv(gym.Env):
     def step(self, action):
 
         desearialized_action = self.deserialize_action(action)
-        logging.info(desearialized_action)
+        #logging.info(desearialized_action)
         for i in range(self.frame_skip):
             self.viewer.take_action(desearialized_action)
             observation, reward, done, info = self.viewer.observe()
