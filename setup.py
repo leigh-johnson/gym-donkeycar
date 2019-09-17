@@ -19,7 +19,7 @@ with open('HISTORY.rst') as history_file:
 requirements = [
     'gym',
     'numpy',
-    'pillow'
+    'pillow',
 ]
 
 setup_requirements = ['pytest-runner', ]
